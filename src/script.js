@@ -66,10 +66,10 @@ scene.add(sunLight)
 
 /////////////////////////////////////////////////////////////////////////
 ///// LOADING GLB/GLTF MODEL FROM BLENDER
-loader.load('models/gltf/starter-scene.glb', function (gltf) {
-
-    scene.add(gltf.scene)
-})
+const geometry = new THREE.BoxGeometry( 50, 50, 1 );
+const material = new THREE.MeshBasicMaterial( {color: 0xDEB887} );
+const cube = new THREE.Mesh( geometry, material );
+scene.add( cube );
 
 /////////////////////////////////////////////////////////////////////////
 //// INTRO CAMERA ANIMATION USING TWEEN
