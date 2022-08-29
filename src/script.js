@@ -6,115 +6,84 @@ import { TWEEN } from 'three/examples/jsm/libs/tween.module.min.js'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
+import { DragControls } from 'three/examples/jsm/controls/DragControls.js';
+import Stats from 'three/examples/jsm/libs/stats.module'
 
-/////////////////////////////////////////////////////////////////////////
-//// DRACO LOADER TO LOAD DRACO COMPRESSED MODELS FROM BLENDER
-const dracoLoader = new DRACOLoader()
-const loader = new GLTFLoader()
-dracoLoader.setDecoderPath('https://www.gstatic.com/draco/v1/decoders/')
-dracoLoader.setDecoderConfig({ type: 'js' })
-loader.setDRACOLoader(dracoLoader)
-
-/////////////////////////////////////////////////////////////////////////
-///// DIV CONTAINER CREATION TO HOLD THREEJS EXPERIENCE
-const container = document.createElement('div')
-document.body.appendChild(container)
-
-/////////////////////////////////////////////////////////////////////////
-///// SCENE CREATION
 const scene = new THREE.Scene()
-scene.background = new THREE.Color('#c8f0f9')
+scene.add(new THREE.AxesHelper(5))
 
-/////////////////////////////////////////////////////////////////////////
-///// RENDERER CONFIG
-const renderer = new THREE.WebGLRenderer({ antialias: true}) // turn on antialias
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)) //set pixel ratio
-renderer.setSize(window.innerWidth, window.innerHeight) // make it full screen
-renderer.outputEncoding = THREE.sRGBEncoding // set color encoding
-container.appendChild(renderer.domElement) // add the renderer to html div
+const light = new THREE.PointLight()
+light.position.set(10, 10, 10)
+scene.add(light)
 
-/////////////////////////////////////////////////////////////////////////
-///// CAMERAS CONFIG
-const camera = new THREE.PerspectiveCamera(35, window.innerWidth / window.innerHeight, 1, 100)
-camera.position.set(34,16,-20)
-scene.add(camera)
+const camera = new THREE.PerspectiveCamera(
+    75,
+    window.innerWidth / window.innerHeight,
+    0.1,
+    1000
+)
+camera.position.z = 3
 
-/////////////////////////////////////////////////////////////////////////
-///// MAKE EXPERIENCE FULL SCREEN
-window.addEventListener('resize', () => {
-    const width = window.innerWidth
-    const height = window.innerHeight
-    camera.aspect = width / height
-    camera.updateProjectionMatrix()
+const renderer = new THREE.WebGLRenderer()
+renderer.setSize(window.innerWidth, window.innerHeight)
+document.body.appendChild(renderer.domElement)
 
-    renderer.setSize(width, height)
-    renderer.setPixelRatio(2)
+const geometry = new THREE.BoxGeometry()
+//const material: THREE.MeshPhongMaterial = new THREE.MeshPhongMaterial({ color: 0xff0000, transparent: true })
+//const cube: THREE.Mesh = new THREE.Mesh(geometry, material)
+//scene.add(cube)
+
+const material = [
+    new THREE.MeshPhongMaterial({ color: 0xff0000, transparent: true }),
+    new THREE.MeshPhongMaterial({ color: 0x00ff00, transparent: true }),
+    new THREE.MeshPhongMaterial({ color: 0x0000ff, transparent: true })
+]
+
+const cubes = [
+    new THREE.Mesh(geometry, material[0]),
+    new THREE.Mesh(geometry, material[1]),
+    
+]
+cubes[0].position.x = -1
+cubes[1].position.x = 1
+
+cubes.forEach((c) => scene.add(c))
+const control = new OrbitControls( camera, renderer.domElement );
+
+const controls = new DragControls(cubes, camera, renderer.domElement)
+controls.addEventListener('dragstart', function (event) {
+    event.object.material.opacity = 0.33
+    control.enabled=false
+})
+controls.addEventListener('dragend', function (event) {
+    event.object.material.opacity = 1
+    control.enabled=true
 })
 
-/////////////////////////////////////////////////////////////////////////
-///// CREATE ORBIT CONTROLS
-const controls = new OrbitControls(camera, renderer.domElement)
+window.addEventListener('resize', onWindowResize, false)
+function onWindowResize() {
+    camera.aspect = window.innerWidth / window.innerHeight
+    camera.updateProjectionMatrix()
+    renderer.setSize(window.innerWidth, window.innerHeight)
+    render()
+}
 
-/////////////////////////////////////////////////////////////////////////
-///// SCENE LIGHTS
-const ambient = new THREE.AmbientLight(0xa0a0fc, 0.82)
-scene.add(ambient)
+const stats = Stats()
+document.body.appendChild(stats.dom)
 
-const sunLight = new THREE.DirectionalLight(0xe8c37b, 1.96)
-sunLight.position.set(-69,44,14)
-scene.add(sunLight)
+function animate() {
+    requestAnimationFrame(animate)
 
-/////////////////////////////////////////////////////////////////////////
-///// LOADING GLB/GLTF MODEL FROM BLENDER
-const geometry = new THREE.BoxGeometry( 50, 50, 1 );
-const material = new THREE.MeshBasicMaterial( {color: 0xDEB887} );
-const cube = new THREE.Mesh( geometry, material );
-scene.add( cube );
-
-/////////////////////////////////////////////////////////////////////////
-//// INTRO CAMERA ANIMATION USING TWEEN
-function introAnimation() {
-    controls.enabled = false //disable orbit controls to animate the camera
     
-    new TWEEN.Tween(camera.position.set(26,4,-35 )).to({ // from camera position
-        x: 16, //desired x position to go
-        y: 50, //desired y position to go
-        z: -0.1 //desired z position to go
-    }, 6500) // time take to animate
-    .delay(1000).easing(TWEEN.Easing.Quartic.InOut).start() // define delay, easing
-    .onComplete(function () { //on finish animation
-        controls.enabled = true //enable orbit controls
-        setOrbitControlsLimits() //enable controls limits
-        TWEEN.remove(this) // remove the animation from memory
-    })
+    control.update()
+
+    render()
+
+    stats.update()
 }
 
-introAnimation() // call intro animation on start
-
-/////////////////////////////////////////////////////////////////////////
-//// DEFINE ORBIT CONTROLS LIMITS
-function setOrbitControlsLimits(){
-    controls.enableDamping = true
-    controls.dampingFactor = 0.04
-    controls.minDistance = 35
-    controls.maxDistance = 60
-    controls.enableRotate = true
-    controls.enableZoom = true
-    controls.maxPolarAngle = Math.PI /2.5
+function render() {
+    renderer.render(scene, camera)
 }
 
-/////////////////////////////////////////////////////////////////////////
-//// RENDER LOOP FUNCTION
-function rendeLoop() {
-
-    TWEEN.update() // update animations
-
-    controls.update() // update orbit controls
-
-    renderer.render(scene, camera) // render the scene using the camera
-
-    requestAnimationFrame(rendeLoop) //loop the render function
-    
-}
-
-rendeLoop() //start rendering
+animate()
