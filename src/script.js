@@ -8,6 +8,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
 import { DragControls } from 'three/examples/jsm/controls/DragControls.js';
 import Stats from 'three/examples/jsm/libs/stats.module'
+import { CSG } from 'three-csg-ts';
 
 const scene = new THREE.Scene()
 scene.add(new THREE.AxesHelper(5))
@@ -15,6 +16,8 @@ scene.add(new THREE.AxesHelper(5))
 const light = new THREE.PointLight()
 light.position.set(10, 10, 10)
 scene.add(light)
+const lights = new THREE.AmbientLight( 0x404040 ); // soft white light
+scene.add( lights );
 
 const camera = new THREE.PerspectiveCamera(
     75,
@@ -29,9 +32,8 @@ renderer.setSize(window.innerWidth, window.innerHeight)
 document.body.appendChild(renderer.domElement)
 
 const geometry = new THREE.BoxGeometry()
-//const material: THREE.MeshPhongMaterial = new THREE.MeshPhongMaterial({ color: 0xff0000, transparent: true })
-//const cube: THREE.Mesh = new THREE.Mesh(geometry, material)
-//scene.add(cube)
+const geom= new THREE.SphereGeometry()
+
 
 const material = [
     new THREE.MeshPhongMaterial({ color: 0xff0000, transparent: true }),
@@ -42,9 +44,12 @@ const material = [
 const cubes = [
     new THREE.Mesh(geometry, material[0]),
     new THREE.Mesh(geometry, material[1]),
+    new THREE.Mesh(geom, material[2]),
     
 ]
-cubes[0].position.x = -1
+cubes[0].position.x = 0.5
+cubes[0].position.y =0.5
+cubes[2].position.y =2
 cubes[1].position.x = 1
 
 cubes.forEach((c) => scene.add(c))
@@ -54,10 +59,37 @@ const controls = new DragControls(cubes, camera, renderer.domElement)
 controls.addEventListener('dragstart', function (event) {
     event.object.material.opacity = 0.33
     control.enabled=false
+
+///////////////////////////
+
+  
+  // Make sure the .matrix of each mesh is current
+  cubes[0].updateMatrix();
+  cubes[1].updateMatrix();
+  cubes[2].updateMatrix();
+  
+  // Perform CSG operations
+  // The result is a THREE.Mesh that you can add to your scene...
+  const subRes = CSG.subtract(cubes[0], cubes[1]);
+  scene.remove( cubes[0]);
+  scene.add(subRes)
+  cubes.shift(cubes[0])
+  cubes.unshift(subRes)
+  
+//   subRes.position.y=-2
+//   const uniRes = CSG.union(box, sphere);
+//   const intRes = CSG.intersect(box, sphere);
+//   scene.add(subRes)
+  //////////////////////////
+
+
+
+
 })
 controls.addEventListener('dragend', function (event) {
     event.object.material.opacity = 1
     control.enabled=true
+ 
 })
 
 window.addEventListener('resize', onWindowResize, false)
@@ -87,3 +119,6 @@ function render() {
 }
 
 animate()
+
+
+
