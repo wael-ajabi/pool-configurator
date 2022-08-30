@@ -6,190 +6,158 @@ import { TWEEN } from 'three/examples/jsm/libs/tween.module.min.js'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
-import { DragControls } from 'three/examples//jsm/controls/DragControls.js';
+import { DragControls } from 'three/examples/jsm/controls/DragControls.js';
+import Stats from 'three/examples/jsm/libs/stats.module'
+import { CSG } from 'three-csg-ts';
 
-
-
-let      group;
-let enableSelection = false;
-
-const objects = [];
-
-const mouse = new THREE.Vector2(), raycaster = new THREE.Raycaster();
-
-/////////////////////////////////////////////////////////////////////////
-//// DRACO LOADER TO LOAD DRACO COMPRESSED MODELS FROM BLENDER
-const dracoLoader = new DRACOLoader()
-const loader = new GLTFLoader()
-dracoLoader.setDecoderPath('https://www.gstatic.com/draco/v1/decoders/')
-dracoLoader.setDecoderConfig({ type: 'js' })
-loader.setDRACOLoader(dracoLoader)
-
-/////////////////////////////////////////////////////////////////////////
-///// DIV CONTAINER CREATION TO HOLD THREEJS EXPERIENCE
-const container = document.createElement('div')
-document.body.appendChild(container)
-
-/////////////////////////////////////////////////////////////////////////
-///// SCENE CREATION
 const scene = new THREE.Scene()
-scene.background = new THREE.Color('#c8f0f9')
+// scene.add(new THREE.AxesHelper(5))
+const light = new THREE.PointLight()
+light.position.set(10, 10, 10)
+scene.add(light)
+const lights = new THREE.AmbientLight( 0x404040 ); // soft white light
+scene.add( lights );
 
-/////////////////////////////////////////////////////////////////////////
-///// RENDERER CONFIG
-const renderer = new THREE.WebGLRenderer({ antialias: true}) // turn on antialias
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)) //set pixel ratio
-renderer.setSize(window.innerWidth, window.innerHeight) // make it full screen
-renderer.outputEncoding = THREE.sRGBEncoding // set color encoding
-container.appendChild(renderer.domElement) // add the renderer to html div
+const camera = new THREE.PerspectiveCamera(
+    75,
+    window.innerWidth / window.innerHeight,
+    0.1,
+    1000
+)
 
-/////////////////////////////////////////////////////////////////////////
-///// CAMERAS CONFIG
-const camera = new THREE.PerspectiveCamera(35, window.innerWidth / window.innerHeight, 1, 100)
-camera.position.set(34,16,-20)
-scene.add(camera)
+camera.position.x =1.69630816018
+camera.position.y = 5.64289846635066
+camera.position.z = 10.2393201901
 
-/////////////////////////////////////////////////////////////////////////
-///// MAKE EXPERIENCE FULL SCREEN
-window.addEventListener('resize', () => {
-    const width = window.innerWidth
-    const height = window.innerHeight
-    camera.aspect = width / height
-    camera.updateProjectionMatrix()
+const renderer = new THREE.WebGLRenderer({alpha:true})
+renderer.setSize(window.innerWidth, window.innerHeight)
+document.body.appendChild(renderer.domElement)
+renderer.setClearColor( 0x80ced6);
 
-    renderer.setSize(width, height)
-    renderer.setPixelRatio(2)
+const geom= new THREE.SphereGeometry()
+const geometry = new THREE.BoxGeometry(20,0.5,20)
+const geometrybox2 = new THREE.BoxGeometry()
+const geometrycyl = new THREE.CylinderGeometry();
+
+
+const material = [
+    new THREE.MeshPhongMaterial({ color: 0xc1946a, transparent: true }),
+    new THREE.MeshPhongMaterial({ color: 0x00ff00, transparent: true }),
+    new THREE.MeshPhongMaterial({ color: 0x0000ff, transparent: true }),
+    new THREE.MeshPhongMaterial({ color: 0x0ffff555, transparent: true })
+]
+
+const cubes = [
+    new THREE.Mesh(geometry, material[0]),
+    // new THREE.Mesh(geometry, material[1]),
+    new THREE.Mesh(geom, material[2]),
+    new THREE.Mesh(geometrycyl, material[1]),
+    new THREE.Mesh(geometrybox2, material[3]),
+    
+]
+cubes[0].position.x = 0.5
+cubes[0].position.y =0.5
+// cubes[2].position.y =2
+cubes[1].position.x = -4
+cubes[1].position.y = 3
+cubes[1].name="sphere"
+
+cubes[2].position.x = 1
+cubes[2].position.y = 3
+cubes[2].name="cylender"
+
+cubes[3].position.x = 5
+cubes[3].position.y = 3
+cubes[3].name="box"
+
+cubes.forEach((c) => scene.add(c))
+const control = new OrbitControls( camera, renderer.domElement );
+
+const controls = new DragControls(cubes, camera, renderer.domElement)
+controls.addEventListener('dragstart', function (event) {
+    event.object.material.opacity = 0.33
+    if (event.object.name==='cylender'){ 
+        const subRes1 = CSG.subtract(cubes[0], cubes[2]);
+
+        scene.remove( cubes[0]);
+        scene.add(subRes1)
+        cubes.shift(cubes[0])
+        cubes.unshift(subRes1)
+        }
+    if (event.object.name==='box'){ 
+        const subRes2 = CSG.subtract(cubes[0], cubes[3]);
+
+
+        scene.remove( cubes[0]);
+        scene.add(subRes2)
+        cubes.shift(cubes[0])
+        cubes.unshift(subRes2)
+        }
+
+    control.enabled=false
+
+///////////////////////////
+
+  
+  // Make sure the .matrix of each mesh is current
+  cubes[0].updateMatrix();
+  cubes[1].updateMatrix();
+  cubes[2].updateMatrix();
+  cubes[3].updateMatrix();
+//   cubes[2].updateMatrix();
+  
+  // Perform CSG operations
+  // The result is a THREE.Mesh that you can add to your scene...
+  const subRes = CSG.subtract(cubes[0], cubes[1]);
+  scene.remove( cubes[0]);
+  scene.add(subRes)
+  cubes.shift(cubes[0])
+  cubes.unshift(subRes)
+
+ 
+//   subRes.position.y=-2
+//   const uniRes = CSG.union(box, sphere);
+//   const intRes = CSG.intersect(box, sphere);
+//   scene.add(subRes)
+  //////////////////////////
+
+
+
+
+})
+controls.addEventListener('dragend', function (event) {
+    event.object.material.opacity = 1
+    control.enabled=true
+ 
 })
 
-/////////////////////////////////////////////////////////////////////////
-///// CREATE ORBIT CONTROLS
-// const controls = new OrbitControls(camera, renderer.domElement)
+window.addEventListener('resize', onWindowResize, false)
+function onWindowResize() {
+    camera.aspect = window.innerWidth / window.innerHeight
+    camera.updateProjectionMatrix()
+    renderer.setSize(window.innerWidth, window.innerHeight)
+    render()
+}
 
-/////////////////////////////////////////////////////////////////////////
-///// SCENE LIGHTS
-const ambient = new THREE.AmbientLight(0xa0a0fc, 0.82)
-scene.add(ambient)
+const stats = Stats()
+document.body.appendChild(stats.dom)
 
-const sunLight = new THREE.DirectionalLight(0xe8c37b, 1.96)
-sunLight.position.set(-69,44,14)
-scene.add(sunLight)
+function animate() {
+    requestAnimationFrame(animate)
 
-/////////////////////////////////////////////////////////////////////////
-///// LOADING GLB/GLTF MODEL FROM BLENDER
-const geometry = new THREE.BoxGeometry( 50, 50, 1 );
-const material = new THREE.MeshBasicMaterial( {color: 0xDEB887} );
-const cube = new THREE.Mesh( geometry, material );
-scene.add( cube );
-
-/////////////////////////////////////////////////////////////////////////
-//// INTRO CAMERA ANIMATION USING TWEEN
-function introAnimation() {
-    // controls.enabled = false //disable orbit controls to animate the camera
     
-    new TWEEN.Tween(camera.position.set(26,4,-35 )).to({ // from camera position
-        x: 16, //desired x position to go
-        y: 50, //desired y position to go
-        z: -0.1 //desired z position to go
-    }, 6500) // time take to animate
-    .delay(1000).easing(TWEEN.Easing.Quartic.InOut).start() // define delay, easing
-    .onComplete(function () { //on finish animation
-        // controls.enabled = true //enable orbit controls
-        // setOrbitControlsLimits() //enable controls limits
-        TWEEN.remove(this) // remove the animation from memory
-    })
+    control.update()
+
+    render()
+
+    stats.update()
 }
 
-introAnimation() // call intro animation on start
-
-/////////////////////////////////////////////////////////////////////////
-//// DEFINE ORBIT CONTROLS LIMITS
-// function setOrbitControlsLimits(){
-//     controls.enableDamping = true
-//     controls.dampingFactor = 0.04
-//     controls.minDistance = 35
-//     controls.maxDistance = 60
-//     controls.enableRotate = true
-//     controls.enableZoom = true
-//     controls.maxPolarAngle = Math.PI /2.5
-// }
-
-
-group = new THREE.Group();
-scene.add( group );
-
-
-
-/////////////////////////////////////////////////////////////////////////
-//// RENDER LOOP FUNCTION
-function rendeLoop() {
-
-    TWEEN.update() // update animations
-
-    // controls.update() // update orbit controls
-
-    renderer.render(scene, camera) // render the scene using the camera
-
-    requestAnimationFrame(rendeLoop) //loop the render function
-    
+function render() {
+    renderer.render(scene, camera)
 }
 
-function onKeyDown( event ) {
+animate()
 
-    enableSelection = ( event.keyCode === 16 ) ? true : false;
 
-}
-
-function onKeyUp() {
-
-    enableSelection = false;
-
-}
-
-function onClick( event ) {
-
-    event.preventDefault();
-
-    if ( enableSelection === true ) {
-
-        const draggableObjects = controls.getObjects();
-        draggableObjects.length = 0;
-
-        mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
-        mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
-
-        raycaster.setFromCamera( mouse, camera );
-
-        const intersections = raycaster.intersectObjects( objects, true );
-
-        if ( intersections.length > 0 ) {
-
-            const object = intersections[ 0 ].object;
-
-            if ( group.children.includes( object ) === true ) {
-
-                object.material.emissive.set( 0x000000 );
-                scene.attach( object );
-
-            } else {
-
-                object.material.emissive.set( 0xaaaaaa );
-                group.attach( object );
-
-            }
-
-            controls.transformGroup = true;
-            draggableObjects.push( group );
-
-        }
-
-        if ( group.children.length === 0 ) {
-
-            controls.transformGroup = false;
-            draggableObjects.push( ...objects );
-
-        }
-
-    }
-}
-rendeLoop() //start rendering
 
