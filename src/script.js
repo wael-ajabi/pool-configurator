@@ -43,13 +43,13 @@ const material = [
 
 const cubes = [
     new THREE.Mesh(geometry, material[0]),
-    new THREE.Mesh(geometry, material[1]),
+    // new THREE.Mesh(geometry, material[1]),
     new THREE.Mesh(geom, material[2]),
     
 ]
 cubes[0].position.x = 0.5
 cubes[0].position.y =0.5
-cubes[2].position.y =2
+// cubes[2].position.y =2
 cubes[1].position.x = 1
 
 cubes.forEach((c) => scene.add(c))
@@ -66,7 +66,7 @@ controls.addEventListener('dragstart', function (event) {
   // Make sure the .matrix of each mesh is current
   cubes[0].updateMatrix();
   cubes[1].updateMatrix();
-  cubes[2].updateMatrix();
+//   cubes[2].updateMatrix();
   
   // Perform CSG operations
   // The result is a THREE.Mesh that you can add to your scene...
