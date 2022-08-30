@@ -6,6 +6,16 @@ import { TWEEN } from 'three/examples/jsm/libs/tween.module.min.js'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
+import { DragControls } from 'three/examples//jsm/controls/DragControls.js';
+
+
+
+let      group;
+let enableSelection = false;
+
+const objects = [];
+
+const mouse = new THREE.Vector2(), raycaster = new THREE.Raycaster();
 
 /////////////////////////////////////////////////////////////////////////
 //// DRACO LOADER TO LOAD DRACO COMPRESSED MODELS FROM BLENDER
@@ -53,7 +63,7 @@ window.addEventListener('resize', () => {
 
 /////////////////////////////////////////////////////////////////////////
 ///// CREATE ORBIT CONTROLS
-const controls = new OrbitControls(camera, renderer.domElement)
+// const controls = new OrbitControls(camera, renderer.domElement)
 
 /////////////////////////////////////////////////////////////////////////
 ///// SCENE LIGHTS
@@ -74,7 +84,7 @@ scene.add( cube );
 /////////////////////////////////////////////////////////////////////////
 //// INTRO CAMERA ANIMATION USING TWEEN
 function introAnimation() {
-    controls.enabled = false //disable orbit controls to animate the camera
+    // controls.enabled = false //disable orbit controls to animate the camera
     
     new TWEEN.Tween(camera.position.set(26,4,-35 )).to({ // from camera position
         x: 16, //desired x position to go
@@ -83,8 +93,8 @@ function introAnimation() {
     }, 6500) // time take to animate
     .delay(1000).easing(TWEEN.Easing.Quartic.InOut).start() // define delay, easing
     .onComplete(function () { //on finish animation
-        controls.enabled = true //enable orbit controls
-        setOrbitControlsLimits() //enable controls limits
+        // controls.enabled = true //enable orbit controls
+        // setOrbitControlsLimits() //enable controls limits
         TWEEN.remove(this) // remove the animation from memory
     })
 }
@@ -93,15 +103,21 @@ introAnimation() // call intro animation on start
 
 /////////////////////////////////////////////////////////////////////////
 //// DEFINE ORBIT CONTROLS LIMITS
-function setOrbitControlsLimits(){
-    controls.enableDamping = true
-    controls.dampingFactor = 0.04
-    controls.minDistance = 35
-    controls.maxDistance = 60
-    controls.enableRotate = true
-    controls.enableZoom = true
-    controls.maxPolarAngle = Math.PI /2.5
-}
+// function setOrbitControlsLimits(){
+//     controls.enableDamping = true
+//     controls.dampingFactor = 0.04
+//     controls.minDistance = 35
+//     controls.maxDistance = 60
+//     controls.enableRotate = true
+//     controls.enableZoom = true
+//     controls.maxPolarAngle = Math.PI /2.5
+// }
+
+
+group = new THREE.Group();
+scene.add( group );
+
+
 
 /////////////////////////////////////////////////////////////////////////
 //// RENDER LOOP FUNCTION
@@ -109,7 +125,7 @@ function rendeLoop() {
 
     TWEEN.update() // update animations
 
-    controls.update() // update orbit controls
+    // controls.update() // update orbit controls
 
     renderer.render(scene, camera) // render the scene using the camera
 
@@ -117,4 +133,63 @@ function rendeLoop() {
     
 }
 
+function onKeyDown( event ) {
+
+    enableSelection = ( event.keyCode === 16 ) ? true : false;
+
+}
+
+function onKeyUp() {
+
+    enableSelection = false;
+
+}
+
+function onClick( event ) {
+
+    event.preventDefault();
+
+    if ( enableSelection === true ) {
+
+        const draggableObjects = controls.getObjects();
+        draggableObjects.length = 0;
+
+        mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+        mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+
+        raycaster.setFromCamera( mouse, camera );
+
+        const intersections = raycaster.intersectObjects( objects, true );
+
+        if ( intersections.length > 0 ) {
+
+            const object = intersections[ 0 ].object;
+
+            if ( group.children.includes( object ) === true ) {
+
+                object.material.emissive.set( 0x000000 );
+                scene.attach( object );
+
+            } else {
+
+                object.material.emissive.set( 0xaaaaaa );
+                group.attach( object );
+
+            }
+
+            controls.transformGroup = true;
+            draggableObjects.push( group );
+
+        }
+
+        if ( group.children.length === 0 ) {
+
+            controls.transformGroup = false;
+            draggableObjects.push( ...objects );
+
+        }
+
+    }
+}
 rendeLoop() //start rendering
+
